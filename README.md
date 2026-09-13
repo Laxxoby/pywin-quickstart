@@ -1,4 +1,6 @@
-# py-project-tools
+# pywin-quickstart
+
+Repositorio: https://github.com/Laxxoby/pywin-quickstart
 
 Scripts de PowerShell para automatizar la creación y el mantenimiento de proyectos Python en
 Windows: entorno virtual, `.gitignore`, y `requirements.txt` generado a partir de los imports
@@ -16,8 +18,8 @@ reales del código (con `pipreqs`).
 ## Instalación (una sola vez)
 
 ```powershell
-git clone https://github.com/<tu-usuario>/<tu-repo>.git
-cd <tu-repo>
+git clone https://github.com/Laxxoby/pywin-quickstart.git
+cd pywin-quickstart
 .\Install-NewPyProject.ps1
 ```
 
