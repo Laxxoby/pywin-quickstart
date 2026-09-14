@@ -24,13 +24,17 @@ proyecto nuevo.
 
 ---
 
-## 2. Estado actual de `New-PyProject.ps1` (v1.0)
+## 2. Estado actual de `New-PyProject.ps1` (v1.4)
 
 El script, al ejecutarse, hace lo siguiente en orden:
 
 1. Crea la carpeta del proyecto en la ruta indicada (o usa la actual si ya existe, sin borrar contenido).
-2. Verifica que `python` esté disponible en el PATH; si no, se detiene con un error claro.
-3. Crea el entorno virtual `venv/` (si no existe ya).
+2. Busca la versión de Python más reciente instalada: si el "py launcher" de Windows (`py`) está
+   disponible, usa `py -3` (que apunta automáticamente a la versión 3.x más nueva instalada); si
+   no, cae de vuelta a `python`. Si ninguno está disponible, se detiene con un error claro.
+   Muestra en pantalla qué versión exacta se va a usar.
+3. Crea el entorno virtual en una carpeta **`.venv/`** (si no existe ya) con la versión de Python
+   detectada en el paso anterior, y lo activa automáticamente en la sesión actual de PowerShell.
 4. Crea el archivo `.gitignore` con este contenido exacto:
    ```
    .venv/
@@ -40,12 +44,14 @@ El script, al ejecutarse, hace lo siguiente en orden:
    .env
    .env.*
    ```
-5. Instala `pipreqs` dentro del venv recién creado, para que quede listo para usarse en cuanto haya código.
+   (incluye ambos nombres, `.venv/` y `venv/`, por si en algún momento se usa el nombre antiguo).
+5. Actualiza `pip` dentro del `.venv` recién creado (`pip install --upgrade pip`), y luego instala
+   `pipreqs`, para que quede listo para usarse en cuanto haya código.
 6. Crea un `requirements.txt` vacío como marcador inicial.
 7. Inicializa un repositorio git (`git init`), salvo que se use el flag `-NoGit`.
 8. Abre el proyecto en VSCode (`code .`), salvo que se use el flag `-NoVSCode`.
 
-El script es **idempotente**: si algo ya existe (carpeta, venv, `.gitignore`, `requirements.txt`),
+El script es **idempotente**: si algo ya existe (carpeta, `.venv`, `.gitignore`, `requirements.txt`),
 no lo sobrescribe; solo muestra un aviso en amarillo y continúa con el resto.
 
 Usa funciones auxiliares internas para los mensajes en consola:
@@ -64,14 +70,17 @@ Usa funciones auxiliares internas para los mensajes en consola:
 
 ---
 
-## 2.1 Estado actual de `Sync-PyRequirements.ps1` (v1.1)
+## 2.1 Estado actual de `Sync-PyRequirements.ps1` (v1.4)
 
 Este script automatiza el paso de "instalar las librerías que uso" (antes manual con
-`pip install algo`). Se corre **dentro de un proyecto ya creado** (con `venv` existente), después
-de escribir o modificar código con `import`. Hace lo siguiente:
+`pip install algo`). Se corre **dentro de un proyecto ya creado** (con un entorno virtual
+existente), después de escribir o modificar código con `import`. Hace lo siguiente:
 
-1. Verifica que exista la carpeta `venv` en el proyecto; si no, se detiene con un error claro.
-2. Si `pipreqs` no está instalado en el venv, lo instala primero.
+1. Busca el entorno virtual del proyecto: primero revisa si existe `.venv` (nombre actual, creado
+   por `New-PyProject.ps1`); si no, revisa `venv` (nombre usado por versiones anteriores del
+   script). Si no encuentra ninguna de las dos, se detiene con un error claro. Así, tanto los
+   proyectos nuevos como los creados antes de este cambio siguen funcionando sin tocar nada.
+2. Si `pipreqs` no está instalado en el entorno virtual detectado, lo instala primero.
 3. Corre `pipreqs . --force` usando el `pipreqs` del venv del proyecto (sin necesidad de activar
    el venv en la terminal actual), y regenera `requirements.txt` con lo que detecta en el código.
    `pipreqs` no necesita que las librerías ya estén instaladas para detectarlas: solo lee los
@@ -84,9 +93,9 @@ Con esto, el flujo pasa de "escribir import -> instalar a mano -> generar requir
 
 ### Parámetros
 
-| Parámetro | Tipo   | Obligatorio | Descripción                                                      |
-|-----------|--------|-------------|--------------------------------------------------------------------|
-| `-Path`   | string | No          | Ruta del proyecto (donde está `venv`). Por defecto, la carpeta actual. |
+| Parámetro | Tipo   | Obligatorio | Descripción                                                                 |
+|-----------|--------|-------------|--------------------------------------------------------------------------------|
+| `-Path`   | string | No          | Ruta del proyecto (donde está `.venv` o `venv`). Por defecto, la carpeta actual. |
 
 ---
 
@@ -96,24 +105,25 @@ Ahora el flujo es: el proyecto vive en un repositorio de GitHub, se clona una ve
 máquina, y un instalador registra los comandos apuntando directamente a esa carpeta clonada
 (sin copiar archivos a ningún otro lado por defecto).
 
-### 3.1 Subir el proyecto a GitHub (una vez, desde tu máquina actual)
+### 3.1 Subir el proyecto a GitHub (ya hecho)
 
-1. Crea un repositorio nuevo y vacío en GitHub (sin README, sin licencia, para evitar conflictos).
-2. En la carpeta donde tienes estos archivos, ejecuta:
+El repositorio ya existe en: **https://github.com/Laxxoby/pywin-quickstart**
+
+Para referencia, así se subió la primera vez desde la carpeta local:
    ```powershell
    git init
    git add .
    git commit -m "Estructura inicial: New-PyProject, Sync-PyRequirements, Install-NewPyProject"
    git branch -M main
-   git remote add origin https://github.com/<tu-usuario>/<tu-repo>.git
+   git remote add origin https://github.com/Laxxoby/pywin-quickstart.git
    git push -u origin main
    ```
 
 ### 3.2 Clonarlo e instalarlo en cualquier equipo (o de nuevo en el mismo)
 
 ```powershell
-git clone https://github.com/<tu-usuario>/<tu-repo>.git
-cd <tu-repo>
+git clone https://github.com/Laxxoby/pywin-quickstart.git
+cd pywin-quickstart
 .\Install-NewPyProject.ps1
 ```
 
@@ -167,18 +177,21 @@ Si instalaste en modo directo, no hace falta nada más. Si instalaste con `-Copy
 
 ```
 mi-proyecto/
-├── venv/
+├── .venv/
 ├── .gitignore
 └── requirements.txt   (vacío al inicio)
 ```
 
 ## 5. Flujo de trabajo recomendado después de crear el proyecto
 
-1. Activar el entorno virtual: `venv\Scripts\Activate.ps1`
+1. El entorno virtual ya queda activado automáticamente al terminar `newpy` (verás `(.venv)` en
+   el prompt). Si necesitas activarlo de nuevo más tarde (otra terminal, VSCode, etc.):
+   `.venv\Scripts\Activate.ps1`
 2. Escribir tu código y sus `import`.
-3. Instalar las librerías que uses: `pip install <lo que necesites>`
-4. Generar el `requirements.txt` real según lo importado: `pipreqs . --force`
-5. Confirmar cambios en git: `git add .` y `git commit -m "..."`
+3. Correr `syncpy` (o `Sync-PyRequirements.ps1`) para detectar los imports, actualizar
+   `requirements.txt` e instalar automáticamente lo que falte — ya no hace falta `pip install`
+   manual para cada librería nueva.
+4. Confirmar cambios en git: `git add .` y `git commit -m "..."`
 
 ---
 
@@ -200,6 +213,17 @@ mi-proyecto/
   construir la ruta con `$env:USERNAME`. El instalador ahora también reemplaza limpiamente su
   propio bloque en el perfil en cada corrida (en vez de solo detectar duplicados), para que
   funcione bien si el repo se mueve o se reinstala en otro modo.
+- **v1.4** (2026-09-13): Tres cambios en `New-PyProject.ps1` y `Sync-PyRequirements.ps1`:
+  1. `New-PyProject.ps1` ahora detecta la versión de Python más reciente instalada (usa el
+     "py launcher" de Windows con `py -3` si está disponible, en vez de asumir que `python`
+     apunta a la versión correcta) y muestra en pantalla cuál va a usar.
+  2. Antes de instalar `pipreqs`, el script actualiza `pip` dentro del entorno virtual
+     (`pip install --upgrade pip`), para evitar avisos de versión desactualizada.
+  3. El entorno virtual ahora se crea en una carpeta `.venv/` en vez de `venv/` (el `.gitignore`
+     ya cubría ambos nombres desde el inicio). `Sync-PyRequirements.ps1` se actualizó para
+     detectar automáticamente cuál de las dos carpetas existe (`.venv` primero, `venv` como
+     respaldo), de forma que los proyectos creados con versiones anteriores del script sigan
+     funcionando sin cambios.
 
 > Cada vez que se agregue una función nueva al script, se debe sumar una entrada aquí con la
 > versión, la fecha y qué cambió, para no perder el rastro de la evolución del proyecto.

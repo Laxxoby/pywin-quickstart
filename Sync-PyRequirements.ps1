@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Detecta los imports de tu código, actualiza requirements.txt e instala automáticamente
     las librerías necesarias en el venv del proyecto.
@@ -15,7 +15,7 @@
     escribir el import en el código y correr este script.
 
 .PARAMETER Path
-    Ruta del proyecto (donde está la carpeta venv). Por defecto, el directorio actual.
+    Ruta del proyecto (donde está la carpeta del entorno virtual). Por defecto, el directorio actual.
 
 .EXAMPLE
     Sync-PyRequirements.ps1
@@ -24,7 +24,9 @@
     Sync-PyRequirements.ps1 -Path "D:\Proyectos\mi-proyecto"
 
 .NOTES
-    Requiere que el proyecto ya tenga una carpeta 'venv' (creada por ejemplo con New-PyProject.ps1).
+    Requiere que el proyecto ya tenga un entorno virtual, en una carpeta llamada '.venv' (nombre
+    actual usado por New-PyProject.ps1) o 'venv' (nombre usado por versiones anteriores); detecta
+    cualquiera de las dos automáticamente.
     Ver documentación completa en DOCUMENTACION-New-PyProject.md
 #>
 
@@ -38,15 +40,26 @@ function Write-Step($msg) { Write-Host ">> $msg" -ForegroundColor Cyan }
 function Write-Ok($msg) { Write-Host "OK: $msg" -ForegroundColor Green }
 function Write-Warn2($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
 
-$venvPath = Join-Path $Path "venv"
-$venvPip = Join-Path $venvPath "Scripts\pip.exe"
-$venvPipreqs = Join-Path $venvPath "Scripts\pipreqs.exe"
-$reqPath = Join-Path $Path "requirements.txt"
+# Acepta tanto ".venv" (nombre actual que usa New-PyProject.ps1) como "venv"
+# (nombre usado por versiones anteriores), para no romper proyectos ya creados.
+$dotVenvPath = Join-Path $Path ".venv"
+$venvPath    = Join-Path $Path "venv"
 
-if (-not (Test-Path $venvPath)) {
-    Write-Error "No se encontró la carpeta 'venv' en '$Path'. ¿Corriste New-PyProject.ps1 aquí?"
+if (Test-Path $dotVenvPath) {
+    $activeVenvPath = $dotVenvPath
+    $activeVenvName = ".venv"
+} elseif (Test-Path $venvPath) {
+    $activeVenvPath = $venvPath
+    $activeVenvName = "venv"
+} else {
+    Write-Error "No se encontró ninguna carpeta de entorno virtual ('.venv' o 'venv') en '$Path'. ¿Corriste New-PyProject.ps1 aquí?"
     exit 1
 }
+Write-Ok "Entorno virtual detectado: $activeVenvName"
+
+$venvPip = Join-Path $activeVenvPath "Scripts\pip.exe"
+$venvPipreqs = Join-Path $activeVenvPath "Scripts\pipreqs.exe"
+$reqPath = Join-Path $Path "requirements.txt"
 
 if (-not (Test-Path $venvPipreqs)) {
     Write-Step "pipreqs no está instalado en el venv, instalándolo primero"

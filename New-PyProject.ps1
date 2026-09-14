@@ -1,14 +1,17 @@
-<#
+﻿<#
 .SYNOPSIS
     Crea rápidamente un proyecto de Python con entorno virtual, .gitignore y requirements.txt listo para pipreqs.
 
 .DESCRIPTION
     New-PyProject.ps1 automatiza la creación de la estructura base de un proyecto Python:
     - Carpeta del proyecto
-    - Entorno virtual (venv)
+    - Detección automática de la versión de Python más reciente instalada (usa el "py launcher"
+      de Windows con "py -3" si está disponible; si no, usa "python")
+    - Entorno virtual (venv), activado automáticamente en la sesión actual de PowerShell
     - Archivo .gitignore preconfigurado
-    - Instalación de pipreqs dentro del venv (para generar requirements.txt más adelante
-      según los imports reales que uses en tu código, no todo lo instalado)
+    - Actualización de pip dentro del venv, e instalación de pipreqs (para generar
+      requirements.txt más adelante según los imports reales que uses en tu código, no todo lo
+      instalado)
     - (Opcional) Inicialización de git
     - (Opcional) Apertura automática en VSCode
 
@@ -76,23 +79,54 @@ if (Test-Path $projectPath) {
 
 Set-Location $projectPath
 
-# 2. Verificar que Python esté disponible
-Write-Step "Verificando Python"
-$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
-if (-not $pythonCmd) {
-    Write-Error "No se encontró 'python' en el PATH. Instala Python y agrégalo al PATH antes de continuar."
-    exit 1
+# 2. Verificar Python y elegir la versión más reciente disponible
+Write-Step "Buscando la versión de Python más reciente instalada"
+
+$pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+if ($pyLauncher) {
+    # El "py launcher" de Windows conoce todas las versiones instaladas y, con "-3",
+    # usa la más reciente de la rama 3.x sin que tengamos que adivinar la ruta.
+    $usePyLauncher = $true
+    $versionOutput = (& py -3 --version) 2>&1
+} else {
+    $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $pythonCmd) {
+        Write-Error "No se encontró 'python' ni el 'py launcher' en el PATH. Instala Python y agrégalo al PATH antes de continuar."
+        exit 1
+    }
+    $usePyLauncher = $false
+    $versionOutput = (& python --version) 2>&1
 }
-Write-Ok "Python encontrado: $($pythonCmd.Source)"
+Write-Ok "Se usará: $versionOutput"
 
 # 3. Crear entorno virtual
-$venvPath = Join-Path $projectPath "venv"
+$venvPath = Join-Path $projectPath ".venv"
 if (Test-Path $venvPath) {
-    Write-Warn2 "Ya existe una carpeta 'venv'. Se omite la creación."
+    Write-Warn2 "Ya existe una carpeta '.venv'. Se omite la creación."
 } else {
-    Write-Step "Creando entorno virtual (venv)"
-    python -m venv venv
+    Write-Step "Creando entorno virtual (.venv)"
+    if ($usePyLauncher) {
+        py -3 -m venv .venv
+    } else {
+        python -m venv .venv
+    }
     Write-Ok "Entorno virtual creado"
+}
+
+# 3.1 Activar el entorno virtual automáticamente en esta misma sesión
+# (Activate.ps1 de venv usa scope global, por eso queda activo aunque se
+# llame desde dentro de este script y no se haga "dot-sourcing")
+$activateScript = Join-Path $venvPath "Scripts\Activate.ps1"
+if (Test-Path $activateScript) {
+    Write-Step "Activando el entorno virtual en esta sesión"
+    try {
+        & $activateScript
+        Write-Ok "Entorno virtual activado (deberías ver '(.venv)' al inicio del prompt)"
+    } catch {
+        Write-Warn2 "No se pudo activar automáticamente. Actívalo manualmente con: .venv\Scripts\Activate.ps1"
+    }
+} else {
+    Write-Warn2 "No se encontró el script de activación del venv."
 }
 
 # 4. Crear .gitignore
@@ -112,10 +146,14 @@ __pycache__/
     Write-Ok ".gitignore creado"
 }
 
-# 5. Instalar pipreqs dentro del venv (queda listo para usarse más adelante)
-Write-Step "Instalando pipreqs dentro del entorno virtual"
+# 5. Actualizar pip e instalar pipreqs dentro del venv (queda listo para usarse más adelante)
 $venvPip = Join-Path $venvPath "Scripts\pip.exe"
 if (Test-Path $venvPip) {
+    Write-Step "Actualizando pip dentro del entorno virtual"
+    & $venvPip install --upgrade pip --quiet
+    Write-Ok "pip actualizado"
+
+    Write-Step "Instalando pipreqs dentro del entorno virtual"
     & $venvPip install pipreqs --quiet
     Write-Ok "pipreqs instalado en el venv"
 } else {
@@ -155,6 +193,6 @@ if (-not $NoVSCode) {
 }
 
 Write-Host ""
-Write-Ok "Proyecto '$Name' listo en: $projectPath"
-Write-Host "Recuerda activar el entorno virtual con: venv\Scripts\Activate.ps1" -ForegroundColor Magenta
+Write-Ok "Proyecto '$Name' listo en: $projectPath (.venv ya activado en esta sesión)"
 Write-Host "Cuando tengas código con imports, genera tu requirements.txt real con: pipreqs . --force" -ForegroundColor Magenta
+Write-Host "Nota: si abriste VSCode, su terminal integrada abre una sesión nueva y no hereda esta activación. Ahí, actívalo con: .venv\Scripts\Activate.ps1 (o selecciona el intérprete del venv con Ctrl+Shift+P > Python: Select Interpreter)" -ForegroundColor Magenta
