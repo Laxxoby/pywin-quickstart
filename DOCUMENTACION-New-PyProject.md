@@ -306,6 +306,12 @@ mi-proyecto/
 
   `Install-NewPyProject.ps1` se actualizó para registrar también `checkpy` (mismo patrón que
   `syncpy`: se omite con un aviso si `Test-PyProjectSetup.ps1` no está junto al instalador).
+- **v1.7** (2026-09-13): Corrige un error en `Test-PyProjectSetup.ps1` y `Sync-PyRequirements.ps1`
+  cuando `requirements.txt` existe pero está completamente vacío (0 bytes): `Get-Content -Raw`
+  devuelve `$null` en ese caso, y llamar a `.Trim()` sobre `$null` lanzaba
+  "No se puede llamar a un método en una expresión con valor NULL". Ahora ambos scripts usan
+  `[string]::IsNullOrWhiteSpace(...)` antes de operar sobre el contenido, así que un
+  `requirements.txt` vacío se reporta como aviso normal, sin errores en pantalla.
 
 > Cada vez que se agregue una función nueva al script, se debe sumar una entrada aquí con la
 > versión, la fecha y qué cambió, para no perder el rastro de la evolución del proyecto.

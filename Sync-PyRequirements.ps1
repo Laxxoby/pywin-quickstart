@@ -76,7 +76,8 @@ try {
 }
 Write-Ok "requirements.txt actualizado según los imports detectados"
 
-if ((Test-Path $reqPath) -and ((Get-Content $reqPath -Raw).Trim().Length -gt 0)) {
+$reqContent = if (Test-Path $reqPath) { Get-Content $reqPath -Raw -ErrorAction SilentlyContinue } else { $null }
+if (-not [string]::IsNullOrWhiteSpace($reqContent)) {
     Write-Step "Instalando en el venv las librerías detectadas"
     & $venvPython -m pip install -r $reqPath
     Write-Ok "Librerías instaladas en el venv"

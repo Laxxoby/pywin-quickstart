@@ -147,12 +147,12 @@ if (Test-Path $gitignorePath) {
 
 $reqPath = Join-Path $Path "requirements.txt"
 if (Test-Path $reqPath) {
-    $reqContent = (Get-Content $reqPath -Raw).Trim()
-    if ($reqContent.Length -gt 0) {
-        $count = ($reqContent -split "`n" | Where-Object { $_.Trim().Length -gt 0 }).Count
-        Write-Ok "requirements.txt presente, con $count línea(s)"
-    } else {
+    $reqContent = Get-Content $reqPath -Raw -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrWhiteSpace($reqContent)) {
         Write-Warn2 "requirements.txt existe pero está vacío (corre syncpy después de escribir imports)"
+    } else {
+        $count = ($reqContent.Trim() -split "`n" | Where-Object { $_.Trim().Length -gt 0 }).Count
+        Write-Ok "requirements.txt presente, con $count línea(s)"
     }
 } else {
     Write-Warn2 "requirements.txt no encontrado en esta carpeta"
