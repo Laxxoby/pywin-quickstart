@@ -173,6 +173,50 @@ if (-not (Test-Path $reqPath)) {
     Write-Warn2 "Ya existe un requirements.txt. No se sobrescribe."
 }
 
+# 6.1 Crear una plantilla inicial: main.py y README.md
+$mainPyPath = Join-Path $projectPath "main.py"
+if (-not (Test-Path $mainPyPath)) {
+    Write-Step "Creando main.py de arranque"
+    @"
+def main():
+    print("Hola desde $Name")
+
+
+if __name__ == "__main__":
+    main()
+"@ | Out-File -Encoding utf8 $mainPyPath
+    Write-Ok "main.py creado"
+} else {
+    Write-Warn2 "Ya existe main.py. No se sobrescribe."
+}
+
+$readmePath = Join-Path $projectPath "README.md"
+if (-not (Test-Path $readmePath)) {
+    Write-Step "Creando README.md básico"
+    @"
+# $Name
+
+## Cómo empezar
+
+1. Activa el entorno virtual:
+   ``````powershell
+   .venv\Scripts\Activate.ps1
+   ``````
+2. Corre el proyecto:
+   ``````powershell
+   python main.py
+   ``````
+3. Cuando agregues nuevas librerías (con sus ``import``), sincroniza ``requirements.txt``
+   e instálalas automáticamente con:
+   ``````powershell
+   syncpy
+   ``````
+"@ | Out-File -Encoding utf8 $readmePath
+    Write-Ok "README.md creado"
+} else {
+    Write-Warn2 "Ya existe README.md. No se sobrescribe."
+}
+
 # 7. Inicializar git (opcional)
 if (-not $NoGit) {
     $gitCmd = Get-Command git -ErrorAction SilentlyContinue

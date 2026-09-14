@@ -1,16 +1,16 @@
-<#
+﻿<#
 .SYNOPSIS
-    Instala los comandos "newpy" y "syncpy" para usarlos desde cualquier carpeta de Windows,
-    apuntando directamente al repositorio que acabas de clonar.
+    Instala los comandos "newpy", "syncpy" y "checkpy" para usarlos desde cualquier carpeta de
+    Windows, apuntando directamente al repositorio que acabas de clonar.
 
 .DESCRIPTION
     Pensado para correrse justo después de "git clone" de este repositorio.
 
     Por defecto (sin -Copy):
     - NO copia los scripts a ninguna otra carpeta.
-    - Registra en tu perfil de PowerShell ($PROFILE) las funciones "newpy" y "syncpy",
-      apuntando a la ubicación exacta donde clonaste este repositorio (se detecta sola,
-      con $PSScriptRoot).
+    - Registra en tu perfil de PowerShell ($PROFILE) las funciones "newpy", "syncpy" y
+      "checkpy", apuntando a la ubicación exacta donde clonaste este repositorio (se detecta
+      sola, con $PSScriptRoot).
     - Así, cuando actualices el repo con "git pull", los comandos usan la versión más
       reciente automáticamente, sin necesidad de reinstalar nada.
     - Importante: si mueves o borras la carpeta del repo clonado, los comandos dejan de
@@ -62,6 +62,7 @@ function Write-Warn2($msg){ Write-Host "AVISO: $msg" -ForegroundColor Yellow }
 $repoRoot = $PSScriptRoot
 $newProjectSrc = Join-Path $repoRoot "New-PyProject.ps1"
 $syncReqSrc    = Join-Path $repoRoot "Sync-PyRequirements.ps1"
+$checkSrc      = Join-Path $repoRoot "Test-PyProjectSetup.ps1"
 
 if (-not (Test-Path $newProjectSrc)) {
     Write-Error "No se encontró New-PyProject.ps1 en '$repoRoot'. Corre este instalador desde la raíz del repositorio clonado."
@@ -87,15 +88,25 @@ if ($Copy) {
         Copy-Item -Path $syncReqSrc -Destination $InstallDir -Force
         $syncReqFinal = Join-Path $InstallDir "Sync-PyRequirements.ps1"
     }
+
+    $checkFinal = $null
+    if (Test-Path $checkSrc) {
+        Copy-Item -Path $checkSrc -Destination $InstallDir -Force
+        $checkFinal = Join-Path $InstallDir "Test-PyProjectSetup.ps1"
+    }
     Write-Ok "Scripts copiados"
 } else {
     Write-Step "Modo directo: los comandos apuntarán al repo clonado en $repoRoot"
     $newProjectFinal = $newProjectSrc
     $syncReqFinal = if (Test-Path $syncReqSrc) { $syncReqSrc } else { $null }
+    $checkFinal = if (Test-Path $checkSrc) { $checkSrc } else { $null }
 }
 
 if (-not $syncReqFinal) {
     Write-Warn2 "No se encontró Sync-PyRequirements.ps1 junto al instalador. Se omite el comando 'syncpy'."
+}
+if (-not $checkFinal) {
+    Write-Warn2 "No se encontró Test-PyProjectSetup.ps1 junto al instalador. Se omite el comando 'checkpy'."
 }
 
 # Preparar el perfil de PowerShell
@@ -123,6 +134,17 @@ function syncpy {
 "@
 }
 
+$checkFunctionText = ""
+if ($checkFinal) {
+    $checkFunctionText = @"
+
+function checkpy {
+    param([string]`$Path = (Get-Location).Path)
+    & "$checkFinal" -Path `$Path
+}
+"@
+}
+
 $functionBlock = @"
 
 # --- Inicio bloque New-PyProject (agregado automáticamente) ---
@@ -136,6 +158,7 @@ function newpy {
     & "$newProjectFinal" -Name `$Name -Path `$Path -NoGit:`$NoGit -NoVSCode:`$NoVSCode
 }
 $syncFunctionText
+$checkFunctionText
 # --- Fin bloque New-PyProject ---
 "@
 
@@ -164,4 +187,7 @@ Write-Host "Cierra y vuelve a abrir la terminal (o ejecuta: . `$PROFILE) para po
 Write-Host "Uso: newpy -Name mi-proyecto" -ForegroundColor Magenta
 if ($syncReqFinal) {
     Write-Host "Uso: syncpy   (corre esto dentro de la carpeta de un proyecto ya creado)" -ForegroundColor Magenta
+}
+if ($checkFinal) {
+    Write-Host "Uso: checkpy  (diagnostica el entorno y, si aplica, el proyecto en la carpeta actual)" -ForegroundColor Magenta
 }

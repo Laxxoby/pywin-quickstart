@@ -1,15 +1,19 @@
-# Documentación: `New-PyProject.ps1`, `Install-NewPyProject.ps1` y `Sync-PyRequirements.ps1`
+# Documentación: scripts de `pywin-quickstart`
 
 Este documento describe qué hace actualmente cada script del proyecto, cómo instalarlos para
 usarlos desde cualquier carpeta de Windows, y cómo retomar este proyecto con una IA en el futuro
 sin perder contexto.
 
-Son tres scripts complementarios:
-- **`New-PyProject.ps1`**: crea la estructura inicial de un proyecto nuevo.
-- **`Install-NewPyProject.ps1`**: instala `New-PyProject.ps1` como el comando `newpy`, disponible
-  desde cualquier carpeta de Windows (automatiza lo que antes era la instalación manual).
+Son cinco scripts complementarios:
+- **`New-PyProject.ps1`**: crea la estructura inicial de un proyecto nuevo (comando `newpy`).
 - **`Sync-PyRequirements.ps1`**: se corre dentro de un proyecto ya existente cada vez que agregas
-  código nuevo, para detectar imports e instalar automáticamente lo que falte.
+  código nuevo, para detectar imports e instalar automáticamente lo que falte (comando `syncpy`).
+- **`Test-PyProjectSetup.ps1`**: diagnostica de un vistazo el entorno (Python, git, VSCode,
+  política de ejecución) y, si aplica, el proyecto en la carpeta actual (comando `checkpy`).
+- **`Install-NewPyProject.ps1`**: instala `newpy`, `syncpy` y `checkpy`, disponibles desde
+  cualquier carpeta de Windows (automatiza lo que antes era la instalación manual).
+- **`Uninstall-NewPyProject.ps1`**: revierte la instalación, quitando esos comandos de tu perfil
+  de PowerShell (y, si quieres, borrando también la copia de los scripts si instalaste con `-Copy`).
 
 ---
 
@@ -99,6 +103,58 @@ Con esto, el flujo pasa de "escribir import -> instalar a mano -> generar requir
 
 ---
 
+## 2.2 Estado actual de `Test-PyProjectSetup.ps1` (v1.6, nuevo)
+
+Script de solo lectura (no modifica nada) pensado para diagnosticar rápido cuando algo no
+funciona, en vez de tener que revisar manualmente cada cosa. Revisa dos bloques:
+
+**Entorno general:**
+1. Si el "py launcher" (`py`) y/o `python` están en el PATH, y qué versión detecta cada uno.
+2. Si `git` está disponible.
+3. Si el comando `code` (VSCode) está disponible.
+4. La política de ejecución de scripts actual (avisa en rojo si está bloqueando todo).
+5. Si las funciones `newpy`, `syncpy` y `checkpy` ya quedaron registradas en `$PROFILE`.
+
+**Proyecto en la carpeta indicada (o la actual):**
+1. Si existe `.venv` o `venv`, y cuál de las dos.
+2. Si `python.exe` y `pipreqs.exe` existen dentro de ese entorno virtual.
+3. Si hay `.gitignore`, `requirements.txt` (y cuántas líneas tiene) y un repositorio git iniciado.
+
+Usa tres niveles de aviso: `OK` (verde, todo bien), `AVISO` (amarillo, algo falta pero no es
+grave), y `FALTA` (rojo, esto sí va a impedir que algo funcione).
+
+### Parámetros
+
+| Parámetro | Tipo   | Obligatorio | Descripción                                                        |
+|-----------|--------|-------------|------------------------------------------------------------------------|
+| `-Path`   | string | No          | Carpeta del proyecto a revisar. Por defecto, la carpeta actual.        |
+
+---
+
+## 2.3 Estado actual de `Uninstall-NewPyProject.ps1` (v1.6, nuevo)
+
+Revierte lo que hace `Install-NewPyProject.ps1`:
+
+1. Busca en `$PROFILE` el bloque de funciones marcado con los comentarios
+   `# --- Inicio bloque New-PyProject ---` / `# --- Fin bloque New-PyProject ---`, y lo elimina.
+   Después de esto, `newpy`, `syncpy` y `checkpy` dejan de existir en nuevas terminales.
+2. Si se usa `-RemoveCopy`, además busca y borra `New-PyProject.ps1`, `Sync-PyRequirements.ps1`
+   y `Test-PyProjectSetup.ps1` dentro de `-InstallDir` (solo aplica si en su momento instalaste
+   con `-Copy`). Pide confirmación antes de borrar, salvo que se use `-Force`.
+
+No toca los proyectos que ya creaste (ninguna carpeta con `.venv`, `.gitignore`, etc.) ni el
+repositorio clonado: solo deshace el registro de los comandos.
+
+### Parámetros
+
+| Parámetro     | Tipo   | Obligatorio | Descripción                                                                 |
+|---------------|--------|-------------|----------------------------------------------------------------------------|
+| `-RemoveCopy` | switch | No          | Si se pasa, también borra los scripts copiados en `-InstallDir`.           |
+| `-InstallDir` | string | No          | Solo con `-RemoveCopy`. Por defecto: `$env:USERPROFILE\Scripts`.           |
+| `-Force`      | switch | No          | Si se pasa, borra sin pedir confirmación (solo aplica con `-RemoveCopy`).  |
+
+---
+
 ## 3. Cómo guardarlo en GitHub y usarlo desde cualquier parte de Windows (clonar + instalar)
 
 Ahora el flujo es: el proyecto vive en un repositorio de GitHub, se clona una vez en cualquier
@@ -179,6 +235,8 @@ Si instalaste en modo directo, no hace falta nada más. Si instalaste con `-Copy
 mi-proyecto/
 ├── .venv/
 ├── .gitignore
+├── main.py
+├── README.md
 └── requirements.txt   (vacío al inicio)
 ```
 
@@ -187,11 +245,14 @@ mi-proyecto/
 1. El entorno virtual ya queda activado automáticamente al terminar `newpy` (verás `(.venv)` en
    el prompt). Si necesitas activarlo de nuevo más tarde (otra terminal, VSCode, etc.):
    `.venv\Scripts\Activate.ps1`
-2. Escribir tu código y sus `import`.
-3. Correr `syncpy` (o `Sync-PyRequirements.ps1`) para detectar los imports, actualizar
+2. Corre `main.py` (ya viene con un ejemplo mínimo): `python main.py`
+3. Escribir tu código y sus `import`.
+4. Correr `syncpy` (o `Sync-PyRequirements.ps1`) para detectar los imports, actualizar
    `requirements.txt` e instalar automáticamente lo que falte — ya no hace falta `pip install`
    manual para cada librería nueva.
-4. Confirmar cambios en git: `git add .` y `git commit -m "..."`
+5. Si algo no funciona en cualquier punto de este flujo, corre `checkpy` para ver de un vistazo
+   qué falta (Python, git, VSCode, política de ejecución, estado del venv, etc.).
+6. Confirmar cambios en git: `git add .` y `git commit -m "..."`
 
 ---
 
@@ -231,6 +292,20 @@ mi-proyecto/
   aunque la versión seguía igual. Ahora `New-PyProject.ps1` y `Sync-PyRequirements.ps1` invocan pip
   como módulo de Python (`python.exe -m pip ...`) en vez de llamar a `pip.exe` directamente, que es
   la forma que evita ese problema en Windows.
+- **v1.6** (2026-09-13): Se agregan tres funciones nuevas al kit:
+  1. **`Test-PyProjectSetup.ps1`** (comando `checkpy`): diagnóstico de solo lectura que revisa
+     Python/py, git, VSCode, política de ejecución, qué comandos quedaron en el perfil, y el
+     estado del proyecto actual (venv, pipreqs, `.gitignore`, `requirements.txt`, git). Pensado
+     para no tener que revisar cada cosa a mano cuando algo falla.
+  2. **`Uninstall-NewPyProject.ps1`**: quita el bloque de funciones (`newpy`/`syncpy`/`checkpy`)
+     del perfil de PowerShell, y opcionalmente (`-RemoveCopy`) borra también la copia de los
+     scripts si se había instalado con `-Copy`.
+  3. **Plantilla inicial en `New-PyProject.ps1`**: cada proyecto nuevo ahora incluye un `main.py`
+     de arranque (con un `print` de ejemplo) y un `README.md` básico con los pasos para activar
+     el venv, correr el proyecto y usar `syncpy`. Ambos se saltan si ya existen (idempotente).
+
+  `Install-NewPyProject.ps1` se actualizó para registrar también `checkpy` (mismo patrón que
+  `syncpy`: se omite con un aviso si `Test-PyProjectSetup.ps1` no está junto al instalador).
 
 > Cada vez que se agregue una función nueva al script, se debe sumar una entrada aquí con la
 > versión, la fecha y qué cambió, para no perder el rastro de la evolución del proyecto.

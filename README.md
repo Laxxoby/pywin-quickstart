@@ -10,9 +10,11 @@ reales del código (con `pipreqs`).
 
 | Archivo                       | Qué hace                                                                 |
 |--------------------------------|---------------------------------------------------------------------------|
-| `New-PyProject.ps1`            | Crea un proyecto nuevo: carpeta, `venv`, `.gitignore`, git init, VSCode.  |
+| `New-PyProject.ps1`            | Crea un proyecto nuevo: carpeta, `.venv`, `.gitignore`, `main.py`, `README.md`, git init, VSCode. |
 | `Sync-PyRequirements.ps1`      | Dentro de un proyecto existente, detecta imports e instala lo que falte. |
-| `Install-NewPyProject.ps1`     | Instala los comandos `newpy` y `syncpy`, disponibles desde cualquier carpeta de Windows. |
+| `Test-PyProjectSetup.ps1`      | Diagnostica el entorno (Python, git, VSCode, política de ejecución) y el proyecto actual. |
+| `Install-NewPyProject.ps1`     | Instala los comandos `newpy`, `syncpy` y `checkpy`, disponibles desde cualquier carpeta de Windows. |
+| `Uninstall-NewPyProject.ps1`   | Revierte la instalación (quita los comandos del perfil de PowerShell). |
 | `DOCUMENTACION-New-PyProject.md` | Documentación completa: qué hace cada script, changelog, y un prompt para pedirle a una IA que le agregue funciones nuevas. |
 
 ## Instalación (una sola vez)
@@ -40,6 +42,9 @@ newpy -Name mi-proyecto
 
 # Dentro de un proyecto ya creado, después de escribir código con imports
 syncpy
+
+# En cualquier momento, si algo no funciona, diagnostica el entorno y el proyecto actual
+checkpy
 ```
 
 Ver `DOCUMENTACION-New-PyProject.md` para el detalle completo de cada script, sus parámetros,
