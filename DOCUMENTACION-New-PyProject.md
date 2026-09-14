@@ -224,6 +224,13 @@ mi-proyecto/
      detectar automáticamente cuál de las dos carpetas existe (`.venv` primero, `venv` como
      respaldo), de forma que los proyectos creados con versiones anteriores del script sigan
      funcionando sin cambios.
+- **v1.5** (2026-09-13): Corrige que la actualización de pip no se aplicaba de verdad. En Windows,
+  `pip.exe` no puede sobrescribirse a sí mismo mientras corre (`pip install --upgrade pip` desde
+  `pip.exe` falla con "To modify pip, please run..."), y ese error no detenía el script porque pip
+  lo imprime como texto, no como una excepción de PowerShell — por eso salía "OK: pip actualizado"
+  aunque la versión seguía igual. Ahora `New-PyProject.ps1` y `Sync-PyRequirements.ps1` invocan pip
+  como módulo de Python (`python.exe -m pip ...`) en vez de llamar a `pip.exe` directamente, que es
+  la forma que evita ese problema en Windows.
 
 > Cada vez que se agregue una función nueva al script, se debe sumar una entrada aquí con la
 > versión, la fecha y qué cambió, para no perder el rastro de la evolución del proyecto.

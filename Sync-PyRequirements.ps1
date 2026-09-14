@@ -57,13 +57,13 @@ if (Test-Path $dotVenvPath) {
 }
 Write-Ok "Entorno virtual detectado: $activeVenvName"
 
-$venvPip = Join-Path $activeVenvPath "Scripts\pip.exe"
+$venvPython = Join-Path $activeVenvPath "Scripts\python.exe"
 $venvPipreqs = Join-Path $activeVenvPath "Scripts\pipreqs.exe"
 $reqPath = Join-Path $Path "requirements.txt"
 
 if (-not (Test-Path $venvPipreqs)) {
     Write-Step "pipreqs no está instalado en el venv, instalándolo primero"
-    & $venvPip install pipreqs --quiet
+    & $venvPython -m pip install pipreqs --quiet
     Write-Ok "pipreqs instalado"
 }
 
@@ -78,7 +78,7 @@ Write-Ok "requirements.txt actualizado según los imports detectados"
 
 if ((Test-Path $reqPath) -and ((Get-Content $reqPath -Raw).Trim().Length -gt 0)) {
     Write-Step "Instalando en el venv las librerías detectadas"
-    & $venvPip install -r $reqPath
+    & $venvPython -m pip install -r $reqPath
     Write-Ok "Librerías instaladas en el venv"
 } else {
     Write-Warn2 "requirements.txt quedó vacío: no se detectaron imports externos todavía."

@@ -147,17 +147,21 @@ __pycache__/
 }
 
 # 5. Actualizar pip e instalar pipreqs dentro del venv (queda listo para usarse más adelante)
+$venvPython = Join-Path $venvPath "Scripts\python.exe"
 $venvPip = Join-Path $venvPath "Scripts\pip.exe"
-if (Test-Path $venvPip) {
+if (Test-Path $venvPython) {
     Write-Step "Actualizando pip dentro del entorno virtual"
-    & $venvPip install --upgrade pip --quiet
+    # Se usa "python -m pip" en vez de "pip.exe" directo: en Windows, pip.exe no puede
+    # sobrescribirse a sí mismo mientras se está ejecutando, y termina en un error del tipo
+    # "To modify pip, please run...". Invocarlo como módulo de Python evita ese problema.
+    & $venvPython -m pip install --upgrade pip --quiet
     Write-Ok "pip actualizado"
 
     Write-Step "Instalando pipreqs dentro del entorno virtual"
-    & $venvPip install pipreqs --quiet
+    & $venvPython -m pip install pipreqs --quiet
     Write-Ok "pipreqs instalado en el venv"
 } else {
-    Write-Warn2 "No se encontró pip dentro del venv, instala pipreqs manualmente más adelante."
+    Write-Warn2 "No se encontró python dentro del venv, instala pipreqs manualmente más adelante."
 }
 
 # 6. Crear un requirements.txt vacío inicial (se llenará luego con pipreqs)
